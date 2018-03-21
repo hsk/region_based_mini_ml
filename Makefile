@@ -7,3 +7,7 @@ all:
 
 clean:
 	$(MAKE) -C src clean
+
+run:
+	src/region_ml
+

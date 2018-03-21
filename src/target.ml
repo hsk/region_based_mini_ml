@@ -1,4 +1,4 @@
-type ident = string ;;
+type ident = string
 
 module type SrcExp = sig
   type t =
@@ -11,7 +11,7 @@ module type SrcExp = sig
     | Empty
 end
 
-module SrcExp = struct
+module SrcExp : SrcExp = struct
   type t =
     | IntLit of int
     | Var of ident
@@ -32,6 +32,12 @@ end
 
 
 module TyVar : VARIABLE = struct
+  type t = ident
+  let intro x = x
+  let fmt x = x
+  let equal (x, x') = x = x'
+  let compare a = fun b -> String.compare a b
+  let new_var c = intro ("'r" ^ (string_of_int c))
 end
 
 module TyVarSet = Set.Make(TyVar)
@@ -45,7 +51,7 @@ module RegVar : VARIABLE = struct
   let new_var c = intro ("'r" ^ (string_of_int c))
 end
 
-module RegVarSet = Set.Make(RegVar) ;;
+module RegVarSet = Set.Make(RegVar)
 
 module EffVar : VARIABLE = struct
   type t = ident
@@ -56,7 +62,7 @@ module EffVar : VARIABLE = struct
   let new_var c = intro ("'e" ^ (string_of_int c))
 end
 
-module EffVarSet = Set.Make(EffVar) ;;
+module EffVarSet = Set.Make(EffVar)
 
 type effect =
   | EffVar of EffVar.t
@@ -80,7 +86,7 @@ module Effect = struct
     | (EffGet(s1), EffPut(s2)) -> 1
 end
 
-module EffSet = Set.Make(Effect) ;;
+module EffSet = Set.Make(Effect)
 
 module EffVarMap = Map.Make(EffVar)
 module RegVarMap = Map.Make(RegVar)
@@ -187,7 +193,7 @@ module AnnotatedType = struct
     match ty with
     | (TVar(s), _) -> TyVarSet.singleton s
     | (TArrow(t1, (ev, eff), t2), _) -> TyVarSet.union (ftv t1) (ftv t2)
-    | (_, _) -> TyVarSet.empty ;;
+    | (_, _) -> TyVarSet.empty
 
   let rec frv ty =
     match ty with
@@ -195,7 +201,7 @@ module AnnotatedType = struct
        RegVarSet.union
          (RegVarSet.union (frv t1) (frv t2))
          (RegVarSet.union (RegVarSet.singleton r) (ArrowEff.frv (ev, eff)))
-    | (_, r) -> RegVarSet.singleton r ;;
+    | (_, r) -> RegVarSet.singleton r
 
   let rec fev ty =
     match ty with
@@ -203,7 +209,7 @@ module AnnotatedType = struct
        EffVarSet.union
          (EffVarSet.union (fev t1) (fev t2))
          (EffVarSet.union (EffVarSet.singleton ev) (ArrowEff.fev (ev, eff)))
-    | (_, _) -> EffVarSet.empty ;;
+    | (_, _) -> EffVarSet.empty
 
   let fv ty = ((ftv ty), (frv ty), (fev ty))
 
@@ -239,7 +245,7 @@ module AnnotatedType = struct
     | (_, _) -> failwith "unify failed"
 end
 
-module IdentEnv = Map.Make(String) ;;
+module IdentEnv = Map.Make(String)
 
 module VarStream = struct
   let intro = (0, 0, 0)
@@ -262,10 +268,10 @@ module type RegExp = sig
     | RLetRec of ident * RegVar.t list * ident * 'a t * 'a t * 'a
     | RCall of 'a t * 'a t * 'a
     | RLam of ident * 'a t * RegVar.t * 'a
-    | REmpty ;;
+    | REmpty
 end
 
-module RegExp = struct
+module RegExp : RegExp = struct
   type 'a t =
     | RInt of int * RegVar.t * 'a
     | RVarX of ident * 'a
@@ -274,7 +280,7 @@ module RegExp = struct
     | RLetRec of ident * RegVar.t list * ident * 'a t * 'a t * 'a
     | RCall of 'a t * 'a t * 'a
     | RLam of ident * 'a t * RegVar.t * 'a
-    | REmpty ;;
+    | REmpty
 end
 
 module RRegExp = struct
@@ -340,10 +346,11 @@ module RRegExp = struct
 end
 
 module type TRANSLATOR = sig
+  val cover : ty_with_place IdentEnv.t -> RRegExp.t -> RRegExp.t
   val translate : SrcExp.t -> RRegExp.t
 end
 
-module TargetTranslator = struct
+module TargetTranslator : TRANSLATOR = struct
 
   let rec cover env exp =
     let twp = RRegExp.ty_with_place exp in
@@ -477,10 +484,10 @@ module TargetTranslator = struct
     let (env', subst', vs', reg_exp) = walk exp IdentEnv.empty Substitute.empty VarStream.intro in
     let result_exp = cover env' reg_exp in
     print_string ((RRegExp.fmt result_exp) ^ "\n");
-    reg_exp;;
+    reg_exp
 end
 
+let _ =
+  TargetTranslator.translate (SrcExp.Call((SrcExp.Lam("x", SrcExp.Var("x"))), SrcExp.IntLit(1)))
 
-                            (*
-TargetTranslator.translate (SrcExp.Call((SrcExp.Lam("x", SrcExp.Var("x"))), SrcExp.IntLit(1)));;
-                             *)
+let _ = exit 0

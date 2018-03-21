@@ -1,2 +1,1 @@
-(* main.ml *)
-open Target ;;
+open Target
